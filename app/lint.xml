@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lint>
+    <!-- aapt2 versions adaptive icons to v26 itself; without the qualifier the launcher icon is not linked. -->
+    <issue id="ObsoleteSdkInt">
+        <ignore path="src/main/res/mipmap-anydpi-v26" />
+    </issue>
+    <!-- The toolchain is pinned with FLACker's; update both together. -->
+    <issue id="AndroidGradlePluginVersion" severity="ignore" />
+</lint>
