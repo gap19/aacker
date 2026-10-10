@@ -5,6 +5,9 @@ import android.content.Context
 import android.net.Uri
 import android.provider.MediaStore
 import android.provider.MediaStore.Audio.Media
+import java.nio.ByteBuffer
+import java.nio.charset.Charset
+import java.nio.charset.CodingErrorAction
 import java.text.Collator
 import java.util.Locale
 
@@ -84,7 +87,37 @@ internal fun leading(value: String?): Int? = value?.trim()?.takeWhile(Char::isDi
 internal fun total(value: String?): Int? = value?.substringAfter('/', "")?.trim()?.toIntOrNull()
 
 private fun clean(value: String?): String =
-    value?.takeUnless { it == MediaStore.UNKNOWN_STRING }?.trim().orEmpty()
+    value?.takeUnless { it == MediaStore.UNKNOWN_STRING }?.trim()?.let(::unmangle).orEmpty()
+
+private val cp1252 = Charset.forName("windows-1252")
+
+/**
+ * Undo UTF-8 text read as Windows-1252 ("lâ€™aurore" → "l’aurore"). The watch's media scanner
+ * guesses the encoding of some MP4 tags, which are always UTF-8. A string is changed only when
+ * its Windows-1252 bytes are valid UTF-8, so correct text and real Latin-1 accents stay as they are.
+ */
+internal fun unmangle(text: String): String {
+    if (text.none { it.code in 0x80..0xFF || it.code in 0x152..0x2122 }) return text
+    val out = java.io.ByteArrayOutputStream(text.length)
+    val encoder = cp1252.newEncoder()
+    for (c in text) {
+        when {
+            c.code < 0x80 -> out.write(c.code)
+            encoder.canEncode(c) -> out.write(cp1252.encode(c.toString()).get().toInt())
+            // The five bytes Windows-1252 leaves undefined come back as C1 control characters.
+            c.code in 0x80..0x9F -> out.write(c.code)
+            else -> return text
+        }
+    }
+    val bytes = out.toByteArray()
+    if (bytes.none { it < 0 }) return text
+    return runCatching {
+        Charsets.UTF_8.newDecoder()
+            .onMalformedInput(CodingErrorAction.REPORT)
+            .onUnmappableCharacter(CodingErrorAction.REPORT)
+            .decode(ByteBuffer.wrap(bytes)).toString()
+    }.getOrDefault(text)
+}
 
 object LibraryReader {
     private val columns = arrayOf(

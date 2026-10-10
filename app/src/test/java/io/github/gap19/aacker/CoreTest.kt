@@ -5,6 +5,7 @@ import io.github.gap19.aacker.library.Track
 import io.github.gap19.aacker.library.clock
 import io.github.gap19.aacker.library.leading
 import io.github.gap19.aacker.library.total
+import io.github.gap19.aacker.library.unmangle
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -46,6 +47,19 @@ class CoreTest {
     @Test fun numbers() {
         assertEquals(3, leading("3/11")); assertEquals(11, total("3/11"))
         assertNull(total("3")); assertNull(leading(null)); assertEquals(2, leading(" 2 "))
+    }
+
+    @Test fun mojibakeRepaired() {
+        assertEquals("Les Chants de l’aurore", unmangle("Les Chants de lâ€™aurore"))
+        assertEquals("L’Être et le Néant", unmangle("Lâ€™Ãªtre et le NÃ©ant".replace("Ãªtre", "ÃŠtre")))
+        assertEquals("La Quebrá del Ají", unmangle("La QuebrÃ¡ del AjÃ­"))
+        assertEquals("The Sender — Do Not Tamper", unmangle("The Sender â€” Do Not Tamper"))
+        assertEquals("…of Ruins", unmangle("â€¦of Ruins"))
+    }
+
+    @Test fun correctTextUntouched() {
+        for (t in listOf("Les Chants de l’aurore", "Kælan Mikla", "múm", "Sigur Rós", "SÃO PAULO", "L’Enfant de la lune (月の子)", "Plain"))
+            assertEquals(t, unmangle(t))
     }
 
     @Test fun clocks() {
